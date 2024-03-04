@@ -11,13 +11,12 @@ export type GetNodeRegistryBody = {
   prvkey : NodePri[] 
 };
 
-let registry : GetNodeRegistryBody = { nodes: [], prvkey: [] };
-
-
 export async function launchRegistry() {
   const _registry = express();
   _registry.use(express.json());
   _registry.use(bodyParser.json());
+
+  let registry : GetNodeRegistryBody = { nodes: [], prvkey: [] };
 
   _registry.get("/status", (req, res) => {
     res.send("live");
@@ -46,6 +45,10 @@ export async function launchRegistry() {
     const ReqNode: NodePri | undefined = nodePrvList.find(node => node.nodeId === ReqNodeId);
     const prvKey = ReqNode?.prvKey || null;
     res.json({ nodeId : ReqNodeId, prvKey: prvKey });
+  });
+
+  _registry.get('/getNodeRegistry', (req, res) => {
+    res.json(registry)
   });
 
   const server = _registry.listen(REGISTRY_PORT, () => {

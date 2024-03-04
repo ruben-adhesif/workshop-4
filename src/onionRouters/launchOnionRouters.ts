@@ -10,9 +10,11 @@ export async function launchOnionRouters(n: number) {
     // create the node
     const newPromise = simpleOnionRouter(index);
     promises.push(newPromise);
+
+    // register the node
+    await axios.post(`http://localhost:${REGISTRY_PORT}/registerNode`, { nodeId: index});
   }
 
   const servers = await Promise.all(promises);
-
   return servers;
 }

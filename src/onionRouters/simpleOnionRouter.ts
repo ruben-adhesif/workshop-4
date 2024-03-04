@@ -2,6 +2,19 @@ import bodyParser from "body-parser";
 import express from "express";
 import { BASE_ONION_ROUTER_PORT, REGISTRY_PORT } from "../config";
 import axios from "axios";
+import * as crypto from "../crypto";
+import { SendMessageBody } from '../users/user';
+
+type RouterLog = {
+  lastReceivedEncryptedMessage : string | null;
+  lastReceivedDecryptedMessage : string | null;
+  lastMessageDestination : string | null;
+  update:(message: string, clearMessage: string, prevNode: number) => void;
+}
+
+// cf Documentation
+const LEN_RSA_ENCRYPTED = 344;
+const LEN_PREVIOUS_VALUE = 10;
 
 export async function simpleOnionRouter(nodeId: number) {
   const onionRouter = express();
@@ -9,37 +22,32 @@ export async function simpleOnionRouter(nodeId: number) {
   onionRouter.use(bodyParser.json());
 
   // Define explicit types for all variables
-  let lastEncryptedMessage : string | null = null;
-  let lastDecryptedMessage : string | null = null;
-  let lastMessageDestination : string | null = null;
-  let lastReceivedMessage: string | null = null;
-  let lastSentMessage: string | null = null;
+  let log : RouterLog = {
+    lastReceivedEncryptedMessage: null,
+    lastReceivedDecryptedMessage: null,
+    lastMessageDestination: null,
+
+    update(message: string, clearMessage: string, prevNode: number) {
+      this.lastReceivedEncryptedMessage = message;
+      this.lastReceivedDecryptedMessage = clearMessage;
+      this.lastMessageDestination = prevNode.toString();
+    }
+  }
 
   // Check status
   onionRouter.get("/status", (req, res) => {
     res.send("live");
   });
 
-  // Nodes' GET routes
-  onionRouter.get("/getLastReceivedEncryptedMessage", (req, res) => {
-    res.json({ result: lastEncryptedMessage });
+  // GET routes
+  onionRouter.get("/getLastReceivedEncryptedMessage", (req, res) => { 
+    res.json({ result: log.lastReceivedEncryptedMessage });   
   });
-
-  onionRouter.get("/getLastReceivedDecryptedMessage", (req, res) => {
-    res.json({ result: lastDecryptedMessage });
+  onionRouter.get("/getLastReceivedDecryptedMessage", (req, res) => { 
+    res.json({ result: log.lastReceivedDecryptedMessage }); 
   });
-
-  onionRouter.get("/getLastMessageDestination", (req, res) => {
-    res.json({ result: lastMessageDestination });
-  });
-
-  // Users' GET routes
-  onionRouter.get("/getLastReceivedMessage", (req, res) => {
-    res.json({ result: lastReceivedMessage });
-  });
-
-  onionRouter.get("/getLastSentMessage", (req, res) => {
-    res.json({ result: lastSentMessage });
+  onionRouter.get("/getLastMessageDestination", (req, res) => { 
+    res.json({ result: log.lastMessageDestination }); 
   });
 
   // Register
@@ -52,6 +60,30 @@ export async function simpleOnionRouter(nodeId: number) {
     const response = await axios.get(`http://localhost:${REGISTRY_PORT}/getPrivateKey/${nodeId}`);
     const prvKey = response.data.prvKey;
     res.json({ result : prvKey });
+  });
+
+  // Message
+  onionRouter.post("/message", async (req, res) => {
+    // Get data
+    const message : string = req.body.message;
+    const response = await axios.get(`http://localhost:${REGISTRY_PORT}/getPrivateKey/${nodeId}`);
+    const prvKey = await crypto.importPrvKey(response.data.prvKey);
+
+    // Break encryption
+    const rsaEncrypted = message.substring(0, LEN_RSA_ENCRYPTED);
+    const symEncrypted = message.substring(LEN_RSA_ENCRYPTED);
+    const symKey = await crypto.rsaDecrypt(rsaEncrypted, prvKey);
+    const clearData = await crypto.symDecrypt(symKey, symEncrypted);
+
+    // Read Data
+    const previousValue = clearData.substring(0, LEN_PREVIOUS_VALUE);
+    const clearMessage = clearData.substring(LEN_PREVIOUS_VALUE);
+    const prevNode = parseInt(previousValue, 10);
+
+    // Send back
+    axios.post(`http://localhost:${prevNode}/message`, { message: clearMessage});
+    log.update(message, clearMessage, prevNode);
+    res.sendStatus(200)
   });
 
 
