@@ -6,9 +6,12 @@ import * as crypto from "../crypto";
 // Registery Initialisation
 export type Node =    { nodeId: number; pubKey: string };
 export type NodePri = { nodeId: number; prvKey: string | null };
-export type GetNodeRegistryBody = { pub: Node[]; prv : NodePri[] };
+export type GetNodeRegistryBody = { 
+  nodes: Node[]; 
+  prvkey : NodePri[] 
+};
 
-let register : GetNodeRegistryBody = { pub: [], prv: [] };
+let registry : GetNodeRegistryBody = { nodes: [], prvkey: [] };
 
 
 export async function launchRegistry() {
@@ -23,26 +26,22 @@ export async function launchRegistry() {
   _registry.post("/registerNode", async (req, res) => {
     const nodeId : number = parseInt(req.body.nodeId, 10);
 
-    // Create a RSA key pair
+    // Generate RSA key
     const keyPair = await crypto.generateRsaKeyPair();
     const publicKey : string = await crypto.exportPubKey(keyPair.publicKey);
     const privateKey : string | null = await crypto.exportPrvKey(keyPair.privateKey);
-    
-    // Create the Node
-    const newNode: Node = { nodeId: nodeId, pubKey: publicKey };
-    const newPrvKey: NodePri = { nodeId: nodeId, prvKey: privateKey };
 
-    // Register the Node
-    register.pub.push(newNode);
-    register.prv.push(newPrvKey);
+    // Register it
+    registry.nodes.push({ nodeId: nodeId, pubKey: publicKey });
+    registry.prvkey.push({ nodeId: nodeId, prvKey: privateKey });
 
-    //res.status(200); // Ping lauchOnionRouters.ts that it's ended
+    // Ping lauchOnionRouters.ts that it's ended
     res.status(200).json({ nodeId: nodeId, pubKey: publicKey });
   });
 
   _registry.get('/getPrivateKey/:nodeId', (req, res) => {
     const ReqNodeId = parseInt(req.params.nodeId);
-    const nodePrvList = register.prv;
+    const nodePrvList = registry.prvkey;
     
     const ReqNode: NodePri | undefined = nodePrvList.find(node => node.nodeId === ReqNodeId);
     const prvKey = ReqNode?.prvKey || null;
