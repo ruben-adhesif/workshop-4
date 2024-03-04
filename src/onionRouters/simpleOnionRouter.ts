@@ -3,16 +3,14 @@ import express from "express";
 import { BASE_ONION_ROUTER_PORT, REGISTRY_PORT } from "../config";
 import axios from "axios";
 import * as crypto from "../crypto";
-import { SendMessageBody } from '../users/user';
 
+// Initialisation for the class
 type RouterLog = {
   lastReceivedEncryptedMessage : string | null;
   lastReceivedDecryptedMessage : string | null;
   lastMessageDestination : number | null;
   update:(message: string, clearMessage: string, prevNode: number) => void;
 }
-
-// cf Documentation
 const LEN_RSA_ENCRYPTED = 344;
 const LEN_PREVIOUS_VALUE = 10;
 
@@ -21,7 +19,7 @@ export async function simpleOnionRouter(nodeId: number) {
   onionRouter.use(express.json());
   onionRouter.use(bodyParser.json());
 
-  // Define explicit types for all variables
+  // Initialisation of the instance
   let log : RouterLog = {
     lastReceivedEncryptedMessage: null,
     lastReceivedDecryptedMessage: null,
@@ -50,10 +48,11 @@ export async function simpleOnionRouter(nodeId: number) {
     res.json({ result: log.lastMessageDestination }); 
   });
 
-  // Register
+  // Register (automaticaly & on demande)
+  await axios.post(`http://localhost:${REGISTRY_PORT}/registerNode`, { nodeId: nodeId});
   onionRouter.post("/registerNode", async (req, res) => {
     const response = await axios.post(`http://localhost:${REGISTRY_PORT}/registerNode`, { nodeId: nodeId});
-    res.json( response.data)
+    res.json(response.data)
   });
 
   onionRouter.get("/getPrivateKey", async (req, res) => {

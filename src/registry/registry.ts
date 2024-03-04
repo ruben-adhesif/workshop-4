@@ -1,23 +1,26 @@
 import bodyParser from "body-parser";
-import express, { Request, Response } from "express";
+import express from "express";
 import { REGISTRY_PORT } from "../config";
 import * as crypto from "../crypto";
 
-// Registery Initialisation
+// Differente classes
 export type Node =    { nodeId: number; pubKey: string };
 export type NodePri = { nodeId: number; prvKey: string | null };
-export type GetNodeRegistryBody = { 
-  nodes: Node[]; 
-  prvkey : NodePri[] 
-};
+export type NodeRegistry = { nodes: Node[]; prvkey : NodePri[] };
+
+// Useless (only for __test__/tests/onionRouting.test.ts )
+export type RegisterNodeBody = { nodeId: number; pubKey: string; };
+export type GetNodeRegistryBody = { nodes: Node[]; };
+
 
 export async function launchRegistry() {
   const _registry = express();
   _registry.use(express.json());
   _registry.use(bodyParser.json());
 
-  let registry : GetNodeRegistryBody = { nodes: [], prvkey: [] };
-
+  // Initialisation for the instance
+  let registry : NodeRegistry = { nodes: [], prvkey: [] };
+  
   _registry.get("/status", (req, res) => {
     res.send("live");
   });

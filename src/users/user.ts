@@ -2,10 +2,11 @@ import bodyParser from "body-parser";
 import express from "express";
 
 import axios from "axios";
-import { GetNodeRegistryBody, Node } from "../registry/registry"
+import { NodeRegistry, Node } from "../registry/registry"
 import * as crypto from "../crypto";
 import * as config from "../config";
 
+// Initialisation for the class
 export type SendMessageBody = {
   message: string;
   destinationUserId: number;
@@ -23,6 +24,7 @@ export async function user(userId: number) {
   _user.use(express.json());
   _user.use(bodyParser.json());
 
+  // Initialisation for the instance
   let log : UserLog = { 
     lastReceivedMessage : null,
     lastSentMessage: null,
@@ -52,7 +54,7 @@ export async function user(userId: number) {
   });
 
   _user.get("/getNodeRegistry", async (req, res) => {
-    const registery : GetNodeRegistryBody = await axios.get(`http://localhost:${config.REGISTRY_PORT}/getNodeRegistry`);
+    const registery : NodeRegistry = await axios.get(`http://localhost:${config.REGISTRY_PORT}/getNodeRegistry`);
     res.json(registery.nodes);
   })
 
