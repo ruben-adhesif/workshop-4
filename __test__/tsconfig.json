@@ -1,6 +1,7 @@
 {
   "exclude": ["node_modules", "build"],
   "compilerOptions": {
+    "outDir": "dist", //add to avoid error
     "target": "es2016",
     "lib": ["es6"],
     "module": "commonjs",

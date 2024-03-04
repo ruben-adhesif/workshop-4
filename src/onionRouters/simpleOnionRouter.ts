@@ -8,7 +8,7 @@ import { SendMessageBody } from '../users/user';
 type RouterLog = {
   lastReceivedEncryptedMessage : string | null;
   lastReceivedDecryptedMessage : string | null;
-  lastMessageDestination : string | null;
+  lastMessageDestination : number | null;
   update:(message: string, clearMessage: string, prevNode: number) => void;
 }
 
@@ -30,7 +30,7 @@ export async function simpleOnionRouter(nodeId: number) {
     update(message: string, clearMessage: string, prevNode: number) {
       this.lastReceivedEncryptedMessage = message;
       this.lastReceivedDecryptedMessage = clearMessage;
-      this.lastMessageDestination = prevNode.toString();
+      this.lastMessageDestination = prevNode;
     }
   }
 
@@ -81,7 +81,7 @@ export async function simpleOnionRouter(nodeId: number) {
     const prevNode = parseInt(previousValue, 10);
 
     // Send back
-    axios.post(`http://localhost:${prevNode}/message`, { message: clearMessage});
+    await axios.post(`http://localhost:${prevNode}/message`, { message: clearMessage});
     log.update(message, clearMessage, prevNode);
     res.sendStatus(200)
   });

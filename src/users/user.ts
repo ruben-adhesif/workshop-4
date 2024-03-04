@@ -14,6 +14,8 @@ export type SendMessageBody = {
 type UserLog = {
   lastReceivedMessage : string | null;
   lastSentMessage : string | null;
+  lastCircuit : number[];
+  update:(message: string, circuit: Node[]) => void;
 }
 
 export async function user(userId: number) {
@@ -23,7 +25,16 @@ export async function user(userId: number) {
 
   let log : UserLog = { 
     lastReceivedMessage : null,
-    lastSentMessage: null
+    lastSentMessage: null,
+    lastCircuit: [],
+
+    update(message: string, circuit: Node[]) {
+      // concerve only the NodeId
+      const nodeIds: number[] = circuit.map(circuit => circuit.nodeId);
+      
+      this.lastSentMessage = message;
+      this.lastCircuit = nodeIds;
+    }
   };
 
   _user.get("/status", (req, res) => {
@@ -35,6 +46,9 @@ export async function user(userId: number) {
   });
   _user.get("/getlastSentMessage", (req, res) => {
     res.json({ result: log.lastSentMessage });
+  });
+  _user.get("/getLastCircuit", (req, res) => {
+    res.json({ result: log.lastCircuit })
   });
 
   _user.get("/getNodeRegistry", async (req, res) => {
@@ -52,15 +66,15 @@ export async function user(userId: number) {
     // Get & archive the request
     const { message, destinationUserId } : SendMessageBody = req.body;
     
-    // Create the circus & encryption layer
+    // Create the circuit & encryption layer
     const circuit = await generateRandomCircuit();
     const encryptMsg = await encryptMessage(message, destinationUserId, circuit);
 
     // Forward the encrypted message
     const entryNode = config.BASE_ONION_ROUTER_PORT + circuit[0].nodeId;
-    axios.post(`http://localhost:${entryNode}/message`, { message: encryptMsg});
+    await axios.post(`http://localhost:${entryNode}/message`, { message: encryptMsg});
 
-    log.lastSentMessage = message;
+    log.update(message, circuit);
     res.sendStatus(200);
   })
 
